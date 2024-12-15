@@ -50,7 +50,7 @@ app.post('/alexa', async (req, res) => {
             console.log('Consulta extraída de la solicitud de Alexa:', userQuery);
             
             const response = await axios.post('https://api.openai.com/v1/chat/completions', {
-                model: 'gpt-4',
+                model: 'gpt-4o',
                 messages: [{ role: 'user', content: userQuery }],
                 max_tokens: 100
             }, {
