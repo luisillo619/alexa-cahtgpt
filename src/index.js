@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import express from 'express';
 import OpenAI from 'openai';
 
+
 dotenv.config();
 
 const app = express();
@@ -13,13 +14,16 @@ app.use(express.urlencoded({ extended: true }));
 
 // Asegurarse de limpiar la API Key
 const openaiApiKey = process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.trim() : '';
-
+const openaiOrganization = process.env.OPENAI_ID_ORGANIZATION ? process.env.OPENAI_ID_ORGANIZATION.trim() : '';
 if (!openaiApiKey || openaiApiKey.length < 20) {
     console.error('Error: La clave de la API de OpenAI no es válida o está vacía.');
     process.exit(1);
 }
 
-const openai = new OpenAI({ apiKey: openaiApiKey });
+const openai = new OpenAI({
+    organization: openaiOrganization,
+    apiKey: openaiApiKey,
+});
 
 app.get('/', (req, res) => {
   res.send('Hello World!');
