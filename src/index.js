@@ -15,11 +15,13 @@ app.get('/', (req, res) => {
   res.send('Hello World!');
 });
 
-app.post('/chat', async (req, res) => {
+app.post('/alexa', async (req, res) => {
     console.log("pepe");
 
     // Verifica si req.body existe antes de encadenar
     const intent = req.body?.request?.intent?.name;
+    console.log(req.body);
+    
     console.log('Intent:', intent);
 
     if (intent === 'AskChatGptIntent') {
