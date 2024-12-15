@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 import express from 'express';
-import axios from 'axios';
+import OpenAI from 'openai';
 
 dotenv.config();
 
@@ -18,6 +18,8 @@ if (!openaiApiKey || openaiApiKey.length < 20) {
     console.error('Error: La clave de la API de OpenAI no es válida o está vacía.');
     process.exit(1);
 }
+
+const openai = new OpenAI({ apiKey: openaiApiKey });
 
 app.get('/', (req, res) => {
   res.send('Hello World!');
@@ -41,7 +43,6 @@ app.post('/alexa', async (req, res) => {
             const userQuery = req.body?.request?.intent?.slots?.query?.value;
             console.log(userQuery);
             
-            
             if (!userQuery) {
                 console.error('Error: No se proporcionó ninguna consulta en la ranura de la intención.');
                 return res.status(400).send('Falta el parámetro "query" en la solicitud.');
@@ -49,18 +50,13 @@ app.post('/alexa', async (req, res) => {
 
             console.log('Consulta extraída de la solicitud de Alexa:', userQuery);
             
-            const response = await axios.post('https://api.openai.com/v1/chat/completions', {
-                model: 'gpt-4o',
+            const response = await openai.chat.completions.create({
+                model: 'gpt-4',
                 messages: [{ role: 'user', content: userQuery }],
                 max_tokens: 100
-            }, {
-                headers: {
-                    'Authorization': `Bearer ${openaiApiKey}`,
-                    'Content-Type': 'application/json',
-                },
             });
 
-            const chatGptResponse = response?.data?.choices?.[0]?.message?.content || 'No se recibió una respuesta válida de OpenAI';
+            const chatGptResponse = response?.choices?.[0]?.message?.content || 'No se recibió una respuesta válida de OpenAI';
             console.log('Respuesta de ChatGPT:', chatGptResponse);
             
             res.json({
