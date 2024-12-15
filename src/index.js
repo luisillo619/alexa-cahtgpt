@@ -11,7 +11,13 @@ const port = process.env.PORT || 3000;
 app.use(express.json()); 
 app.use(express.urlencoded({ extended: true })); 
 
-const openaiApiKey = process.env.OPENAI_API_KEY;
+// Asegurarse de limpiar la API Key
+const openaiApiKey = process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.trim() : '';
+
+if (!openaiApiKey || openaiApiKey.length < 20) {
+    console.error('Error: La clave de la API de OpenAI no es válida o está vacía.');
+    process.exit(1);
+}
 
 app.get('/', (req, res) => {
   res.send('Hello World!');
@@ -44,7 +50,7 @@ app.post('/alexa', async (req, res) => {
                 max_tokens: 100,
             }, {
                 headers: {
-                    'Authorization': `Bearer ${openaiApiKey.trim()}`, // Solución al error de caracteres inválidos en la autorización
+                    'Authorization': `Bearer ${openaiApiKey}`,
                     'Content-Type': 'application/json',
                 },
             });
