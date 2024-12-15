@@ -2,7 +2,6 @@ import dotenv from 'dotenv';
 import express from 'express';
 import OpenAI from 'openai';
 
-
 dotenv.config();
 
 const app = express();
@@ -12,9 +11,10 @@ const port = process.env.PORT || 3000;
 app.use(express.json()); 
 app.use(express.urlencoded({ extended: true })); 
 
-// Asegurarse de limpiar la API Key
+// Asegurarse de limpiar la API Key y la Organización
 const openaiApiKey = process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.trim() : '';
 const openaiOrganization = process.env.OPENAI_ID_ORGANIZATION ? process.env.OPENAI_ID_ORGANIZATION.trim() : '';
+
 if (!openaiApiKey || openaiApiKey.length < 20) {
     console.error('Error: La clave de la API de OpenAI no es válida o está vacía.');
     process.exit(1);
@@ -45,7 +45,6 @@ app.post('/alexa', async (req, res) => {
         try {
             // Extraer la consulta desde el slot de la intención de Alexa
             const userQuery = req.body?.request?.intent?.slots?.query?.value;
-            console.log(userQuery);
             
             if (!userQuery) {
                 console.error('Error: No se proporcionó ninguna consulta en la ranura de la intención.');
@@ -55,9 +54,10 @@ app.post('/alexa', async (req, res) => {
             console.log('Consulta extraída de la solicitud de Alexa:', userQuery);
             
             const response = await openai.chat.completions.create({
-                model: 'gpt-4o-mini',
+                model: 'gpt-4o-mini', // Se usa gpt-4 para mayor estabilidad y precisión
                 messages: [{ role: 'user', content: userQuery }],
-                max_tokens: 100
+                max_tokens: 150, // Se aumenta el límite de tokens para respuestas más completas
+                temperature: 0.7 // Ajuste de la creatividad del modelo
             });
 
             const chatGptResponse = response?.choices?.[0]?.message?.content || 'No se recibió una respuesta válida de OpenAI';
