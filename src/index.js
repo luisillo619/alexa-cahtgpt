@@ -20,7 +20,7 @@ app.post('/alexa', async (req, res) => {
 
     // Verifica si req.body existe antes de encadenar
     const intent = req.body?.request?.intent?.name;
-    console.log(req.body);
+    console.log(JSON.stringify(req.body));
     
     console.log('Intent:', intent);
 
