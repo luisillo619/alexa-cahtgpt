@@ -39,12 +39,12 @@ app.post('/alexa', async (req, res) => {
             }
 
             const response = await axios.post('https://api.openai.com/v1/chat/completions', {
-                model: 'gpt-4', // Se corrige el nombre del modelo
+                model: 'gpt-4',
                 messages: [{ role: 'user', content: userQuery }],
                 max_tokens: 100,
             }, {
                 headers: {
-                    'Authorization': `Bearer ${openaiApiKey}`,
+                    'Authorization': `Bearer ${openaiApiKey.trim()}`, // Solución al error de caracteres inválidos en la autorización
                     'Content-Type': 'application/json',
                 },
             });
