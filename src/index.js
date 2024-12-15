@@ -37,17 +37,22 @@ app.post('/alexa', async (req, res) => {
 
     if (intent === 'AskChatGptIntent') {
         try {
+            // Extraer la consulta desde el slot de la intención de Alexa
             const userQuery = req.body?.request?.intent?.slots?.query?.value;
+            console.log(userQuery);
+            
             
             if (!userQuery) {
                 console.error('Error: No se proporcionó ninguna consulta en la ranura de la intención.');
                 return res.status(400).send('Falta el parámetro "query" en la solicitud.');
             }
 
+            console.log('Consulta extraída de la solicitud de Alexa:', userQuery);
+            
             const response = await axios.post('https://api.openai.com/v1/chat/completions', {
                 model: 'gpt-4',
                 messages: [{ role: 'user', content: userQuery }],
-                max_tokens: 100,
+                max_tokens: 100
             }, {
                 headers: {
                     'Authorization': `Bearer ${openaiApiKey}`,
@@ -69,7 +74,7 @@ app.post('/alexa', async (req, res) => {
                 }
             });
         } catch (error) {
-            console.error('Error al conectar con la API de OpenAI:', error);
+            console.error('Error al conectar con la API de OpenAI:', error.response?.data || error);
             res.status(500).json({
                 version: '1.0',
                 response: {
