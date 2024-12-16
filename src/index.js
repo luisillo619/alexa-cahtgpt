@@ -49,12 +49,38 @@ app.post('/alexa', async (req, res) => {
                     type: 'PlainText',
                     text: '¡Hola! Estoy aquí para ayudarte. Si tienes alguna pregunta o tema en mente, no dudes en decírmelo. ¿En qué puedo asistirte hoy?'
                 },
+                reprompt: {
+                    outputSpeech: {
+                        type: 'PlainText',
+                        text: '¿En qué puedo ayudarte hoy?'
+                    }
+                },
                 shouldEndSession: false  // Dejar la sesión abierta para que el usuario pueda preguntar
             }
         });
     } else if (requestType === 'IntentRequest') {
         const intent = req.body?.request?.intent?.name || 'Intent no encontrado';
         console.log('Intent:', intent);
+
+        if (intent === 'AMAZON.FallbackIntent') {
+            // Cuando la skill no entiende la petición del usuario.
+            return res.json({
+                version: '1.0',
+                response: {
+                    outputSpeech: {
+                        type: 'PlainText',
+                        text: 'Lo siento, no entendí eso. ¿Podrías repetir tu pregunta de otra forma?'
+                    },
+                    reprompt: {
+                        outputSpeech: {
+                            type: 'PlainText',
+                            text: '¿Podrías decirme en qué puedo ayudarte?'
+                        }
+                    },
+                    shouldEndSession: false
+                }
+            });
+        }
 
         // Extraemos la consulta del slot query, si existe
         const userQuery = req.body?.request?.intent?.slots?.query?.value;
@@ -74,19 +100,25 @@ app.post('/alexa', async (req, res) => {
             const chatGptResponse = response?.choices?.[0]?.message?.content || 'No se recibió una respuesta válida de OpenAI';
             console.log('Respuesta de ChatGPT:', chatGptResponse);
 
-            res.json({
+            return res.json({
                 version: '1.0',
                 response: {
                     outputSpeech: {
                         type: 'PlainText',
                         text: chatGptResponse
                     },
+                    reprompt: {
+                        outputSpeech: {
+                            type: 'PlainText',
+                            text: '¿En qué más puedo ayudarte?'
+                        }
+                    },
                     shouldEndSession: false // Mantener false para permitir más interacción
                 }
             });
         } catch (error) {
             console.error('Error al conectar con la API de OpenAI:', error.response?.data || error);
-            res.status(500).json({
+            return res.status(500).json({
                 version: '1.0',
                 response: {
                     outputSpeech: {
@@ -109,6 +141,12 @@ app.post('/alexa', async (req, res) => {
                 outputSpeech: {
                     type: 'PlainText',
                     text: 'No entendí tu solicitud.'
+                },
+                reprompt: {
+                    outputSpeech: {
+                        type: 'PlainText',
+                        text: '¿Podrías decirme en qué puedo ayudarte?'
+                    }
                 },
                 shouldEndSession: false
             }
