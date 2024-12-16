@@ -122,12 +122,12 @@ const skill = SkillBuilders.custom()
 
 const adapter = new ExpressAdapter(skill, false, false); 
 
-// Usa express.json() para manejar el cuerpo de la solicitud
-app.use(express.json());
+// Usa express.raw() para capturar el cuerpo de la solicitud
+app.use('/alexa', express.raw({ type: 'application/json' }));
 
 // Interceptar todas las solicitudes para ver el cuerpo completo de la solicitud antes de procesarla
 app.post('/alexa', (req, res, next) => {
-    console.log('📦 Cuerpo completo de la solicitud (sin procesar):', JSON.stringify(req.body, null, 2));
+    console.log('📦 Cuerpo completo de la solicitud (sin procesar):', req.body.toString());
     next();
 }, adapter.getRequestHandlers());
 
