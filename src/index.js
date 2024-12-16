@@ -11,6 +11,7 @@ const port = process.env.PORT || 3000;
 
 const openaiApiKey = process.env.OPENAI_API_KEY.trim();
 const openai = new OpenAI({ apiKey: openaiApiKey });
+
 const GeneralHandler = {
     canHandle(handlerInput) {
         return ['LaunchRequest', 'IntentRequest', 'SessionEndedRequest'].includes(handlerInput.requestEnvelope.request.type);
@@ -38,16 +39,22 @@ const GeneralHandler = {
                         max_tokens: 100
                     });
                     const chatGptResponse = response?.choices?.[0]?.message?.content || 'No se recibió respuesta de OpenAI';
+                    
                     return handlerInput.responseBuilder
                         .speak(chatGptResponse)
-                        .reprompt('¿En qué más puedo ayudarte?')
-                        .withShouldEndSession(false) // No termina la sesión
+                        .reprompt('¿En qué más puedo ayudarte?') // Reprompt mantiene la sesión abierta
+                        .withShouldEndSession(false) // La sesión permanece abierta
+                        .addDirective({
+                            type: 'Dialog.ElicitSlot',
+                            slotToElicit: 'query'
+                        }) // Se asegura de que Alexa espere la entrada del usuario
                         .getResponse();
                 } catch (error) {
+                    console.error('❌ Error al obtener respuesta de OpenAI:', error);
                     return handlerInput.responseBuilder
                         .speak('Hubo un error con ChatGPT. Intenta nuevamente.')
                         .reprompt('¿En qué puedo ayudarte?')
-                        .withShouldEndSession(false) // No termina la sesión
+                        .withShouldEndSession(false)
                         .getResponse();
                 }
             }
@@ -56,11 +63,10 @@ const GeneralHandler = {
         return handlerInput.responseBuilder
             .speak('No entendí tu solicitud. Intenta nuevamente.')
             .reprompt('¿Podrías decirme en qué puedo ayudarte?')
-            .withShouldEndSession(false) // No termina la sesión
+            .withShouldEndSession(false)
             .getResponse();
     }
 };
-
 
 const ErrorHandler = {
     canHandle() {
