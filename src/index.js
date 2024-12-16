@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 import express from 'express';
 import { ExpressAdapter } from 'ask-sdk-express-adapter';
-import { SkillBuilders } from 'ask-sdk';
+import { SkillBuilders } from 'ask-sdk-core';
 import OpenAI from 'openai';
 
 dotenv.config();
@@ -52,11 +52,14 @@ const ChatIntentHandler = {
 
         try {
             console.log('📡 Enviando petición a OpenAI...');
-            const prompt = `Responde siempre en texto plano y no utilices formato de solo audio. La consulta es: ${userQuery}`;
+
+            // Cambia el prompt para forzar una respuesta en texto
+            const prompt = `Responde siempre en texto plano sin usar etiquetas de audio ni indicaciones de solo audio. Responde de forma clara. La consulta es: "${userQuery}"`;
+            
             const response = await openai.chat.completions.create({
                 model: 'gpt-4o-mini',
                 messages: [{ role: 'user', content: prompt }],
-                max_tokens: 100
+                max_tokens: 150
             });
 
             console.log('🔍 Respuesta completa de OpenAI:', JSON.stringify(response, null, 2));
@@ -71,9 +74,11 @@ const ChatIntentHandler = {
 
             // 🔍 Eliminar cualquier etiqueta de audio HTML como <audio>...</audio>
             chatGptResponse = chatGptResponse.replace(/<audio[^>]*>(.*?)<\/audio>/g, '');
-            
-            // 🔍 Eliminar caracteres extraños o que no se puedan pronunciar en Alexa
-            chatGptResponse = chatGptResponse.replace(/<[^>]*>/g, ''); // Elimina cualquier etiqueta HTML
+
+            // 🔍 Eliminar etiquetas HTML (como <audio> o <p>)
+            chatGptResponse = chatGptResponse.replace(/<[^>]*>/g, '');
+
+            // 🔍 Quitar espacios adicionales y limpiar la respuesta
             chatGptResponse = chatGptResponse.trim();
 
             console.log(`💬 Respuesta de ChatGPT después de la limpieza: "${chatGptResponse}"`);
@@ -111,11 +116,7 @@ const SessionEndedRequestHandler = {
         return handlerInput.requestEnvelope.request.type === 'SessionEndedRequest';
     },
     handle(handlerInput) {
-        const reason = handlerInput.requestEnvelope.request.reason;
-        console.log(`💤 SessionEndedRequest recibido, la sesión ha terminado por la razón: ${reason}`);
-        if (reason === 'EXCEEDED_MAX_REPROMPTS') {
-            console.warn('⚠️ La sesión terminó por EXCEEDED_MAX_REPROMPTS. Revisa si los reprompts se están enviando correctamente.');
-        }
+        console.log(`💤 SessionEndedRequest recibido, la sesión ha terminado.`);
         return handlerInput.responseBuilder.getResponse();
     }
 };
@@ -145,7 +146,7 @@ const skill = SkillBuilders.custom()
     .create();
 
 // Conexión de la skill con Express usando ExpressAdapter
-const adapter = new ExpressAdapter(skill, true, true); // Habilita la verificación de la firma y del timestamp
+const adapter = new ExpressAdapter(skill, true, true);
 
 // Ruta principal de la skill
 app.post('/alexa', adapter.getRequestHandlers());
