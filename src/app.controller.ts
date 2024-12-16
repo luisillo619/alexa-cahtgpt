@@ -105,4 +105,9 @@ export class AppController {
         return this.appService.getRetryResponse(handlerInput, userName);
     }
   }
+
+  @Get('/')
+  async health() {
+    return 'OK';
+  }
 }
