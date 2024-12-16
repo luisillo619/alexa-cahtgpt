@@ -41,7 +41,6 @@ app.post('/alexa', async (req, res) => {
     const requestType = req.body.request.type;
     console.log(`Tipo de request recibido: ${requestType}`);
 
-    // Manejo del tipo de request
     if (requestType === 'LaunchRequest') {
         console.log('Lanzando skill sin pregunta (LaunchRequest)');
         return res.json({
@@ -84,17 +83,14 @@ app.post('/alexa', async (req, res) => {
             });
         }
 
-        const userQuery = req.body?.request?.intent?.slots?.query?.value;
+        const userQuery = req.body?.request?.intent?.slots?.query?.value || 'No se recibió una consulta. ¿En qué puedo ayudarte?';
         console.log(`Valor del slot "query": ${userQuery}`);
-
-        let prompt = userQuery || 'No se recibió una consulta. ¿En qué puedo ayudarte?';
-        console.log(`Prompt enviado a OpenAI: "${prompt}"`);
 
         try {
             console.log('Enviando petición a OpenAI...');
             const response = await openai.chat.completions.create({
                 model: 'gpt-4o-mini',
-                messages: [{ role: 'user', content: prompt }],
+                messages: [{ role: 'user', content: userQuery }],
                 max_tokens: 100
             });
             console.log('Respuesta completa de OpenAI:', JSON.stringify(response, null, 2));
@@ -133,7 +129,6 @@ app.post('/alexa', async (req, res) => {
                 }
             });
         }
-
     } else if (requestType === 'SessionEndedRequest') {
         console.log('SessionEndedRequest recibido, la sesión ha terminado.');
         return res.status(200).send();
