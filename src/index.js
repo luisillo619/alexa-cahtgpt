@@ -25,60 +25,92 @@ const openai = new OpenAI({
 });
 
 app.get('/', (req, res) => {
-  res.send('Hello World!');
+    res.send('Hello World!');
 });
 
 app.post('/alexa', async (req, res) => {
     if (!req.body) {
-      console.error('Error: req.body está vacío o undefined');
-      return res.status(400).send('No se recibieron datos en el cuerpo de la solicitud');
+        console.error('Error: req.body está vacío o undefined');
+        return res.status(400).send('No se recibieron datos en el cuerpo de la solicitud');
     }
 
     console.log('Encabezados de la solicitud:', JSON.stringify(req.headers, null, 2));
     console.log('req.body completo:', JSON.stringify(req.body, null, 2));
 
-    // Vamos a entrar siempre al flujo sin importar el intent
-    const intent = req.body?.request?.intent?.name || 'Intent no encontrado';
-    console.log('Intent:', intent);
-    
-    // Intentemos extraer el query si existe
-    const userQuery = req.body?.request?.intent?.slots?.query?.value;
-    console.log('Consulta recibida:', userQuery);
+    const requestType = req.body.request.type;
 
-    // Si no hay query, podríamos usar un mensaje genérico o preguntar al usuario algo.
-    let prompt = userQuery || 'No se recibió una consulta. ¿En qué puedo ayudarte?';
-    console.log(prompt);
-    
-    try {
-        const response = await openai.chat.completions.create({
-            model: 'gpt-4o-mini',
-            messages: [{ role: 'user', content: prompt }],
-            max_tokens: 100
-        });
-
-        const chatGptResponse = response?.choices?.[0]?.message?.content || 'No se recibió una respuesta válida de OpenAI';
-        console.log('Respuesta de ChatGPT:', chatGptResponse);
-
-        res.json({
+    // Manejo del tipo de request
+    if (requestType === 'LaunchRequest') {
+        // El usuario inició la skill sin hacer una pregunta
+        return res.json({
             version: '1.0',
             response: {
                 outputSpeech: {
                     type: 'PlainText',
-                    text: chatGptResponse
+                    text: '¡Hola! Estoy aquí para ayudarte. Si tienes alguna pregunta o tema en mente, no dudes en decírmelo. ¿En qué puedo asistirte hoy?'
                 },
-                shouldEndSession: true
+                shouldEndSession: false  // Dejar la sesión abierta para que el usuario pueda preguntar
             }
         });
-    } catch (error) {
-        console.error('Error al conectar con la API de OpenAI:', error.response?.data || error);
-        res.status(500).json({
+    } else if (requestType === 'IntentRequest') {
+        const intent = req.body?.request?.intent?.name || 'Intent no encontrado';
+        console.log('Intent:', intent);
+
+        // Extraemos la consulta del slot query, si existe
+        const userQuery = req.body?.request?.intent?.slots?.query?.value;
+        console.log('Consulta recibida:', userQuery);
+
+        // Si no hay query, usar un mensaje genérico
+        let prompt = userQuery || 'No se recibió una consulta. ¿En qué puedo ayudarte?';
+        console.log('Prompt enviado a OpenAI:', prompt);
+
+        try {
+            const response = await openai.chat.completions.create({
+                model: 'gpt-4o-mini',
+                messages: [{ role: 'user', content: prompt }],
+                max_tokens: 100
+            });
+
+            const chatGptResponse = response?.choices?.[0]?.message?.content || 'No se recibió una respuesta válida de OpenAI';
+            console.log('Respuesta de ChatGPT:', chatGptResponse);
+
+            res.json({
+                version: '1.0',
+                response: {
+                    outputSpeech: {
+                        type: 'PlainText',
+                        text: chatGptResponse
+                    },
+                    shouldEndSession: false // Mantener false para permitir más interacción
+                }
+            });
+        } catch (error) {
+            console.error('Error al conectar con la API de OpenAI:', error.response?.data || error);
+            res.status(500).json({
+                version: '1.0',
+                response: {
+                    outputSpeech: {
+                        type: 'PlainText',
+                        text: 'Hubo un error al obtener la respuesta de ChatGPT. Por favor, inténtalo de nuevo más tarde.'
+                    },
+                    shouldEndSession: true
+                }
+            });
+        }
+
+    } else if (requestType === 'SessionEndedRequest') {
+        // La sesión terminó, no respondemos nada
+        return res.status(200).send();
+    } else {
+        // Caso no contemplado (por ejemplo, otro tipo de request)
+        return res.json({
             version: '1.0',
             response: {
                 outputSpeech: {
                     type: 'PlainText',
-                    text: 'Hubo un error al obtener la respuesta de ChatGPT. Por favor, inténtalo de nuevo más tarde.'
+                    text: 'No entendí tu solicitud.'
                 },
-                shouldEndSession: true
+                shouldEndSession: false
             }
         });
     }
