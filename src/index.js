@@ -116,6 +116,11 @@ const skill = SkillBuilders.custom()
     .addErrorHandlers(ErrorHandler)
     .create();
 
+// ===============================
+// 🔥 Express Adapter para la Skill
+// ===============================
+const adapter = new ExpressAdapter(skill, false, false); // Desactiva la verificación de firma y timestamps para pruebas
+
 // Interceptar todas las solicitudes para ver el cuerpo completo de la solicitud antes de procesarla
 app.post('/alexa', (req, res, next) => {
     let body = '';
@@ -137,10 +142,3 @@ app.listen(port, () => {
 }).on('error', (err) => {
     console.error('❌ Error al iniciar el servidor:', err);
 });
-
-// ===============================
-// 🔥 Express Adapter para la Skill
-// ===============================
-
-const adapter = new ExpressAdapter(skill, false, false); // Desactiva la verificación de firma y timestamps para pruebas
-
