@@ -26,10 +26,9 @@ const GeneralHandler = {
         
         if (requestType === 'LaunchRequest') {
             return handlerInput.responseBuilder
-                .withShouldEndSession(false) // Mantiene la sesión abierta
                 .speak('¡Hola! Estoy aquí para ayudarte. ¿En qué puedo asistirte hoy?')
                 .reprompt('Por favor, dime en qué puedo ayudarte.')
-             
+                .addDelegateDirective() // 🔥 Esta línea asegura que la sesión no se cierre
                 .getResponse();
         }
 
@@ -41,6 +40,9 @@ const GeneralHandler = {
                 try {
                     const userQuery = handlerInput.requestEnvelope.request.intent.slots?.query?.value || 'No se recibió una consulta.';
                     console.log('🗣️ Usuario dijo:', userQuery);
+
+                    // Proporciona respuesta de progreso mientras se consulta OpenAI
+                    await sendProgressiveResponse(handlerInput.requestEnvelope.request.requestId, 'Dame un momento, estoy pensando...');
 
                     const response = await openai.chat.completions.create({
                         model: 'gpt-4o-mini',
@@ -57,28 +59,25 @@ const GeneralHandler = {
                     handlerInput.attributesManager.setSessionAttributes(sessionAttributes);
 
                     return handlerInput.responseBuilder
-                    .withShouldEndSession(false) // Mantiene la sesión abierta
                         .speak(chatGptResponse)
                         .reprompt('¿En qué más puedo ayudarte?')
-                   
+                        .addDelegateDirective() // 🔥 Usar addDelegateDirective para mantener la sesión
                         .getResponse();
                 } catch (error) {
                     console.error('❌ Error en OpenAI:', error);
                     return handlerInput.responseBuilder
-                    .withShouldEndSession(false) // Mantiene la sesión abierta
                         .speak('Hubo un error al conectar con ChatGPT. Inténtalo nuevamente.')
                         .reprompt('¿En qué puedo ayudarte?')
-                       
+                        .addDelegateDirective() // 🔥 Manten la sesión abierta
                         .getResponse();
                 }
             }
 
             // Si no se reconoce el intent
             return handlerInput.responseBuilder
-            .withShouldEndSession(false) // Mantiene la sesión abierta
                 .speak('No entendí tu solicitud. Intenta nuevamente.')
                 .reprompt('¿Podrías decirme en qué puedo ayudarte?')
-        
+                .addDelegateDirective() // 🔥 Mantiene la sesión abierta
                 .getResponse();
         }
 
@@ -90,10 +89,9 @@ const GeneralHandler = {
             if (reason === 'EXCEEDED_MAX_REPROMPTS') {
                 console.log('🔄 Reiniciando la sesión por falta de respuesta del usuario');
                 return handlerInput.responseBuilder
-                .withShouldEndSession(false) // Mantiene la sesión abierta
                     .speak('Parece que no me respondiste. ¿En qué puedo ayudarte ahora?')
                     .reprompt('¿En qué puedo ayudarte?')
-                  
+                    .addDelegateDirective() // 🔥 Mantiene la sesión abierta
                     .getResponse();
             }
 
@@ -102,9 +100,8 @@ const GeneralHandler = {
 
         // Respuesta predeterminada si no se reconoce la solicitud
         return handlerInput.responseBuilder
-        .withShouldEndSession(false) // Mantiene la sesión abierta
             .speak('No se pudo manejar tu solicitud. Intenta nuevamente.')
-          
+            .addDelegateDirective() // 🔥 Mantiene la sesión abierta
             .getResponse();
     }
 };
@@ -120,10 +117,9 @@ const ErrorHandler = {
     handle(handlerInput, error) {
         console.error('❌ Error:', error);
         return handlerInput.responseBuilder
-        .withShouldEndSession(true) // Mantiene la sesión abierta
             .speak('Hubo un error inesperado. Inténtalo de nuevo.')
             .reprompt('¿En qué puedo ayudarte?')
-          
+            .addDelegateDirective() // 🔥 Mantiene la sesión abierta
             .getResponse();
     }
 };
@@ -140,6 +136,33 @@ const SessionEndedRequestHandler = {
         return handlerInput.responseBuilder.getResponse();
     }
 };
+
+/**
+ * Proporciona una respuesta progresiva para evitar que Alexa cierre la sesión mientras espera
+ */
+async function sendProgressiveResponse(requestId, speechText) {
+    const progressiveUrl = `https://api.amazonalexa.com/v1/directives`;
+    const progressiveBody = {
+        header: {
+            requestId
+        },
+        directive: {
+            type: 'VoicePlayer.Speak',
+            speech: speechText
+        }
+    };
+
+    const response = await fetch(progressiveUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.API_ACCESS_TOKEN}`
+        },
+        body: JSON.stringify(progressiveBody)
+    });
+
+    return response;
+}
 
 /**
  * Creación del Skill
