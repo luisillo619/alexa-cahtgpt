@@ -23,7 +23,7 @@ const openai = new OpenAI({
 });
 
 // ===============================
-// 🔥 Unificar todos los manejadores en uno solo
+// 🔥 Manejador principal para todas las solicitudes
 // ===============================
 
 const ChatHandler = {
@@ -32,12 +32,17 @@ const ChatHandler = {
     },
     async handle(handlerInput) {
         try {
+            // 🔍 Información general de la solicitud
             const requestType = handlerInput.requestEnvelope.request.type;
+            const requestId = handlerInput.requestEnvelope.request.requestId;
             const intentName = handlerInput.requestEnvelope.request?.intent?.name;
             const slots = handlerInput.requestEnvelope.request?.intent?.slots || {};
 
+            console.log(`\n🔍 Nueva Solicitud Recibida`);
             console.log(`🔍 Tipo de solicitud: ${requestType}`);
+            console.log(`🆔 ID de la solicitud: ${requestId}`);
             console.log(`🎯 Intent recibido: ${intentName || 'No especificado'}`);
+            console.log(`📦 Cuerpo completo de la solicitud: \n${JSON.stringify(handlerInput.requestEnvelope, null, 2)}`);
 
             let userQuery = 'Preséntate como asistente virtual y explica en qué puedes ayudar.'; // Consulta por defecto
 
@@ -68,6 +73,7 @@ const ChatHandler = {
                 .getResponse();
         } catch (error) {
             console.error('❌ Error en la skill:', error.message);
+            console.error('❌ Error completo:', error);
             return handlerInput.responseBuilder
                 .speak('Ocurrió un error inesperado. Por favor, intenta nuevamente.')
                 .reprompt('¿En qué puedo ayudarte?')
@@ -82,6 +88,7 @@ const ErrorHandler = {
     },
     handle(handlerInput, error) {
         console.error('❌ Error global capturado:', error.message);
+        console.error('❌ Error completo:', error);
         return handlerInput.responseBuilder
             .speak('Ocurrió un error inesperado. Por favor, intenta nuevamente.')
             .reprompt('¿En qué más puedo ayudarte?')
