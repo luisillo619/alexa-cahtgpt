@@ -30,47 +30,105 @@ app.get('/', (req, res) => {
 
 app.post('/alexa', async (req, res) => {
     console.log('===== NUEVA PETICIÓN A /alexa =====');
-    if (!req.body) {
-        console.error('Error: req.body está vacío o undefined');
-        return res.status(400).send('No se recibieron datos en el cuerpo de la solicitud');
-    }
+    try {
+        if (!req.body) {
+            console.error('Error: req.body está vacío o undefined');
+            return res.status(400).send('No se recibieron datos en el cuerpo de la solicitud');
+        }
 
-    console.log('Encabezados de la solicitud:', JSON.stringify(req.headers, null, 2));
-    console.log('Cuerpo completo de la solicitud (req.body):', JSON.stringify(req.body, null, 2));
+        console.log('Encabezados de la solicitud:', JSON.stringify(req.headers, null, 2));
+        console.log('Cuerpo completo de la solicitud (req.body):', JSON.stringify(req.body, null, 2));
 
-    const requestType = req.body.request.type;
-    console.log(`Tipo de request recibido: ${requestType}`);
+        const requestType = req.body.request.type;
+        console.log(`Tipo de request recibido: ${requestType}`);
 
-    if (requestType === 'LaunchRequest') {
-        console.log('Lanzando skill sin pregunta (LaunchRequest)');
-        return res.json({
-            version: '1.0',
-            response: {
-                outputSpeech: {
-                    type: 'PlainText',
-                    text: '¡Hola! Estoy aquí para ayudarte. Si tienes alguna pregunta o tema en mente, no dudes en decírmelo. ¿En qué puedo asistirte hoy?'
-                },
-                reprompt: {
-                    outputSpeech: {
-                        type: 'PlainText',
-                        text: '¿En qué puedo ayudarte hoy?'
-                    }
-                },
-                shouldEndSession: false
-            }
-        });
-    } else if (requestType === 'IntentRequest') {
-        const intent = req.body?.request?.intent?.name || 'Intent no encontrado';
-        console.log(`Intent reconocido: ${intent}`);
-
-        if (intent === 'AMAZON.FallbackIntent') {
-            console.log('Se activó FallbackIntent: no se entendió la petición del usuario.');
+        if (requestType === 'LaunchRequest') {
+            console.log('Lanzando skill sin pregunta (LaunchRequest)');
             return res.json({
                 version: '1.0',
                 response: {
                     outputSpeech: {
                         type: 'PlainText',
-                        text: 'Lo siento, no entendí eso. ¿Podrías repetir tu pregunta de otra forma?'
+                        text: '¡Hola! Estoy aquí para ayudarte. Si tienes alguna pregunta o tema en mente, no dudes en decírmelo. ¿En qué puedo asistirte hoy?'
+                    },
+                    reprompt: {
+                        outputSpeech: {
+                            type: 'PlainText',
+                            text: '¿En qué puedo ayudarte hoy?'
+                        }
+                    },
+                    shouldEndSession: false
+                }
+            });
+        } else if (requestType === 'IntentRequest') {
+            const intent = req.body?.request?.intent?.name || 'Intent no encontrado';
+            console.log(`Intent reconocido: ${intent}`);
+
+            if (intent === 'AMAZON.FallbackIntent') {
+                console.log('Se activó FallbackIntent: no se entendió la petición del usuario.');
+                return res.json({
+                    version: '1.0',
+                    response: {
+                        outputSpeech: {
+                            type: 'PlainText',
+                            text: 'Lo siento, no entendí eso. ¿Podrías repetir tu pregunta de otra forma?'
+                        },
+                        reprompt: {
+                            outputSpeech: {
+                                type: 'PlainText',
+                                text: '¿Podrías decirme en qué puedo ayudarte?'
+                            }
+                        },
+                        shouldEndSession: false
+                    }
+                });
+            }
+
+            const userQuery = req.body?.request?.intent?.slots?.query?.value || 'No se recibió una consulta. ¿En qué puedo ayudarte?';
+            console.log(`Valor del slot "query": ${userQuery}`);
+
+            try {
+                console.log('Enviando petición a OpenAI...');
+                const response = await openai.chat.completions.create({
+                    model: 'gpt-4o-mini',
+                    messages: [{ role: 'user', content: userQuery }],
+                    max_tokens: 100
+                });
+                console.log('Respuesta completa de OpenAI:', JSON.stringify(response, null, 2));
+
+                const chatGptResponse = response?.choices?.[0]?.message?.content || 'No se recibió una respuesta válida de OpenAI';
+                console.log(`Respuesta de ChatGPT: "${chatGptResponse}"`);
+
+                return res.json({
+                    version: '1.0',
+                    response: {
+                        outputSpeech: {
+                            type: 'PlainText',
+                            text: chatGptResponse
+                        },
+                        reprompt: {
+                            outputSpeech: {
+                                type: 'PlainText',
+                                text: '¿En qué más puedo ayudarte?'
+                            }
+                        },
+                        shouldEndSession: false
+                    }
+                });
+            } catch (error) {
+                console.error('Error al conectar con la API de OpenAI:', error);
+            }
+        } else if (requestType === 'SessionEndedRequest') {
+            console.log('SessionEndedRequest recibido, la sesión ha terminado.');
+            return res.status(200).send();
+        } else {
+            console.log(`Tipo de request no contemplado: ${requestType}`);
+            return res.json({
+                version: '1.0',
+                response: {
+                    outputSpeech: {
+                        type: 'PlainText',
+                        text: 'No entendí tu solicitud.'
                     },
                     reprompt: {
                         outputSpeech: {
@@ -82,74 +140,8 @@ app.post('/alexa', async (req, res) => {
                 }
             });
         }
-
-        const userQuery = req.body?.request?.intent?.slots?.query?.value || 'No se recibió una consulta. ¿En qué puedo ayudarte?';
-        console.log(`Valor del slot "query": ${userQuery}`);
-
-        try {
-            console.log('Enviando petición a OpenAI...');
-            const response = await openai.chat.completions.create({
-                model: 'gpt-4o-mini',
-                messages: [{ role: 'user', content: userQuery }],
-                max_tokens: 100
-            });
-            console.log('Respuesta completa de OpenAI:', JSON.stringify(response, null, 2));
-
-            const chatGptResponse = response?.choices?.[0]?.message?.content || 'No se recibió una respuesta válida de OpenAI';
-            console.log(`Respuesta de ChatGPT: "${chatGptResponse}"`);
-
-            console.log('Enviando respuesta a Alexa con sesión abierta...');
-            return res.json({
-                version: '1.0',
-                response: {
-                    outputSpeech: {
-                        type: 'PlainText',
-                        text: chatGptResponse
-                    },
-                    reprompt: {
-                        outputSpeech: {
-                            type: 'PlainText',
-                            text: '¿En qué más puedo ayudarte?'
-                        }
-                    },
-                    shouldEndSession: false
-                }
-            });
-        } catch (error) {
-            console.error('Error al conectar con la API de OpenAI:', error.response?.data || error);
-            console.log('Enviando respuesta de error a Alexa...');
-            return res.status(500).json({
-                version: '1.0',
-                response: {
-                    outputSpeech: {
-                        type: 'PlainText',
-                        text: 'Hubo un error al obtener la respuesta de ChatGPT. Por favor, inténtalo de nuevo más tarde.'
-                    },
-                    shouldEndSession: true
-                }
-            });
-        }
-    } else if (requestType === 'SessionEndedRequest') {
-        console.log('SessionEndedRequest recibido, la sesión ha terminado.');
-        return res.status(200).send();
-    } else {
-        console.log(`Tipo de request no contemplado: ${requestType}`);
-        return res.json({
-            version: '1.0',
-            response: {
-                outputSpeech: {
-                    type: 'PlainText',
-                    text: 'No entendí tu solicitud.'
-                },
-                reprompt: {
-                    outputSpeech: {
-                        type: 'PlainText',
-                        text: '¿Podrías decirme en qué puedo ayudarte?'
-                    }
-                },
-                shouldEndSession: false
-            }
-        });
+    } catch (error) {
+        console.error('Error general en la solicitud /alexa:', error);
     }
 });
 
