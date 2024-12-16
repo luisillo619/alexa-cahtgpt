@@ -119,20 +119,15 @@ const skill = SkillBuilders.custom()
 // ===============================
 // 🔥 Express Adapter para la Skill
 // ===============================
-const adapter = new ExpressAdapter(skill, false, false); // Desactiva la verificación de firma y timestamps para pruebas
+
+const adapter = new ExpressAdapter(skill, false, false); 
+
+// Usa express.json() para manejar el cuerpo de la solicitud
+app.use(express.json());
 
 // Interceptar todas las solicitudes para ver el cuerpo completo de la solicitud antes de procesarla
 app.post('/alexa', (req, res, next) => {
-    let body = '';
-    req.on('data', (chunk) => {
-        body += chunk.toString();
-    });
-    req.on('end', () => {
-        console.log('📦 Cuerpo completo de la solicitud (sin procesar):', body);
-        next();
-    });
-}, (req, res, next) => {
-    console.log(`📥 Nueva solicitud entrante a: ${req.path}`);
+    console.log('📦 Cuerpo completo de la solicitud (sin procesar):', JSON.stringify(req.body, null, 2));
     next();
 }, adapter.getRequestHandlers());
 
