@@ -38,7 +38,6 @@ const LaunchRequestHandler = {
             .getResponse();
     }
 };
-
 const ChatIntentHandler = {
     canHandle(handlerInput) {
         console.debug('ChatIntentHandler - canHandle check:', handlerInput.requestEnvelope);
@@ -51,7 +50,7 @@ const ChatIntentHandler = {
         console.log(`Intent reconocido: ${intent}`);
         
         const userQuery = handlerInput.requestEnvelope.request.intent.slots?.query?.value || 'No se recibió una consulta.';
-        console.debug(`Valor del slot "query": ${userQuery}`);
+        console.debug(`Valor del slot \"query\": ${userQuery}`);
 
         try {
             console.log('Enviando petición a OpenAI...');
@@ -60,23 +59,26 @@ const ChatIntentHandler = {
                 messages: [{ role: 'user', content: userQuery }],
                 max_tokens: 100
             });
-            console.debug('Respuesta completa de OpenAI:', response);
+            console.debug('Respuesta completa de OpenAI:', JSON.stringify(response, null, 2));
+            
             const chatGptResponse = response?.choices?.[0]?.message?.content || 'No se recibió una respuesta válida de OpenAI';
-            console.debug(`Respuesta de ChatGPT: "${chatGptResponse}"`);
+            console.debug(`Respuesta de ChatGPT: \"${chatGptResponse}\"`);
 
             return handlerInput.responseBuilder
                 .speak(chatGptResponse)
                 .reprompt('¿En qué más puedo ayudarte?')
+                .withShouldEndSession(false) // No cerrar la sesión
                 .getResponse();
         } catch (error) {
             console.error('❌ Error al conectar con la API de OpenAI:', error);
             return handlerInput.responseBuilder
                 .speak('Hubo un error al obtener la respuesta de ChatGPT. Por favor, inténtalo de nuevo más tarde.')
-                .withShouldEndSession(true)
+                .withShouldEndSession(true) // Cerrar la sesión en caso de error
                 .getResponse();
         }
     }
 };
+
 
 const FallbackIntentHandler = {
     canHandle(handlerInput) {
