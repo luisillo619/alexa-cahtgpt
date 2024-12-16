@@ -1,6 +1,9 @@
 import dotenv from 'dotenv';
 import express from 'express';
 import OpenAI from 'openai';
+import * as https from 'https';
+import * as crypto from 'crypto';
+
 
 dotenv.config();
 
@@ -8,7 +11,7 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Middleware para procesar JSON
-app.use(express.json()); 
+app.use(express.json({ verify: verifyAlexaSignature })); 
 app.use(express.urlencoded({ extended: true })); 
 
 // Asegurarse de limpiar la API Key y la Organización
@@ -29,20 +32,20 @@ app.get('/', (req, res) => {
   res.send('Hello World!');
 });
 
+// Ruta principal para solicitudes de Alexa
 app.post('/alexa', async (req, res) => {
-    if (!req.body) {
-      console.error('Error: req.body está vacío o undefined');
-      return res.status(400).send('No se recibieron datos en el cuerpo de la solicitud');
-    }
+    try {
+        if (!req.body) {
+            throw new Error('El cuerpo de la solicitud está vacío o no definido.');
+        }
 
-    console.log('Encabezados de la solicitud:', JSON.stringify(req.headers, null, 2));
-    console.log('req.body completo:', JSON.stringify(req.body, null, 2));
+        console.log('Encabezados de la solicitud:', JSON.stringify(req.headers, null, 2));
+        console.log('req.body completo:', JSON.stringify(req.body, null, 2));
 
-    const intent = req.body?.request?.intent?.name || 'Intent no encontrado';
-    console.log('Intent:', intent);
+        const intent = req.body?.request?.intent?.name || 'Intent no encontrado';
+        console.log('Intent:', intent);
 
-    if (intent === 'AskChatGptIntent') {
-        try {
+        if (intent === 'AskChatGptIntent') {
             // Extraer la consulta desde el slot de la intención de Alexa
             const userQuery = req.body?.request?.intent?.slots?.query?.value;
             
@@ -54,10 +57,10 @@ app.post('/alexa', async (req, res) => {
             console.log('Consulta extraída de la solicitud de Alexa:', userQuery);
             
             const response = await openai.chat.completions.create({
-                model: 'gpt-4o-mini', // Se usa gpt-4 para mayor estabilidad y precisión
+                model: 'gpt-4o-mini',
                 messages: [{ role: 'user', content: userQuery }],
-                max_tokens: 150, // Se aumenta el límite de tokens para respuestas más completas
-                temperature: 0.7 // Ajuste de la creatividad del modelo
+                max_tokens: 150,
+                temperature: 0.7
             });
 
             const chatGptResponse = response?.choices?.[0]?.message?.content || 'No se recibió una respuesta válida de OpenAI';
@@ -73,26 +76,26 @@ app.post('/alexa', async (req, res) => {
                     shouldEndSession: true
                 }
             });
-        } catch (error) {
-            console.error('Error al conectar con la API de OpenAI:', error.response?.data || error);
-            res.status(500).json({
+        } else {
+            res.status(400).json({
                 version: '1.0',
                 response: {
                     outputSpeech: {
                         type: 'PlainText',
-                        text: 'Hubo un error al obtener la respuesta de ChatGPT. Por favor, inténtalo de nuevo más tarde.'
+                        text: `Intent no reconocido: ${intent}`
                     },
                     shouldEndSession: true
                 }
             });
         }
-    } else {
-        res.status(400).json({
+    } catch (error) {
+        console.error('Error general:', error.message);
+        res.status(500).json({
             version: '1.0',
             response: {
                 outputSpeech: {
                     type: 'PlainText',
-                    text: `Intent no reconocido: ${intent}`
+                    text: 'Ocurrió un error. Inténtalo más tarde.'
                 },
                 shouldEndSession: true
             }
@@ -103,3 +106,34 @@ app.post('/alexa', async (req, res) => {
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
+
+// 🔥 Verifica la firma de la solicitud
+function verifyAlexaSignature(req, res, buf, encoding) {
+    const signatureCertChainUrl = req.headers['signaturecertchainurl'];
+    const signature = req.headers['signature'];
+
+    if (!signatureCertChainUrl || !signature) {
+        throw new Error('Falta la cabecera signature o signaturecertchainurl.');
+    }
+
+    if (!/^https:\/\/s3\.amazonaws\.com\/echo\.api\//.test(signatureCertChainUrl)) {
+        throw new Error('URL de certificado no válida.');
+    }
+
+    https.get(signatureCertChainUrl, (response) => {
+        let cert = '';
+
+        response.on('data', (chunk) => {
+            cert += chunk;
+        });
+
+        response.on('end', () => {
+            const verifier = crypto.createVerify('SHA256');
+            verifier.update(buf);
+            const isValid = verifier.verify(cert, signature, 'base64');
+            if (!isValid) {
+                throw new Error('Firma de la solicitud no válida.');
+            }
+        });
+    });
+}
