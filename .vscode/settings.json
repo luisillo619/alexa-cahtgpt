@@ -1,0 +1,12 @@
+{
+  "git.ignoreLimitWarning": true,
+  "javascript.preferences.importModuleSpecifier": "relative",
+  "typescript.preferences.importModuleSpecifier": "relative",
+  "files.watcherExclude": {
+    "**/build/*/**": true,
+    "**/dist/*/**": true,
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/*/**": true
+  }
+}
