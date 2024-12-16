@@ -26,9 +26,10 @@ const GeneralHandler = {
         
         if (requestType === 'LaunchRequest') {
             return handlerInput.responseBuilder
+                .withShouldEndSession(false) // Mantiene la sesión abierta
                 .speak('¡Hola! Estoy aquí para ayudarte. ¿En qué puedo asistirte hoy?')
                 .reprompt('Por favor, dime en qué puedo ayudarte.')
-                .withShouldEndSession("false") // Mantiene la sesión abierta
+             
                 .getResponse();
         }
 
@@ -56,25 +57,28 @@ const GeneralHandler = {
                     handlerInput.attributesManager.setSessionAttributes(sessionAttributes);
 
                     return handlerInput.responseBuilder
+                    .withShouldEndSession(false) // Mantiene la sesión abierta
                         .speak(chatGptResponse)
                         .reprompt('¿En qué más puedo ayudarte?')
-                        .withShouldEndSession("false") // Mantiene la sesión abierta
+                   
                         .getResponse();
                 } catch (error) {
                     console.error('❌ Error en OpenAI:', error);
                     return handlerInput.responseBuilder
+                    .withShouldEndSession(false) // Mantiene la sesión abierta
                         .speak('Hubo un error al conectar con ChatGPT. Inténtalo nuevamente.')
                         .reprompt('¿En qué puedo ayudarte?')
-                        .withShouldEndSession("false") // Mantiene la sesión abierta
+                       
                         .getResponse();
                 }
             }
 
             // Si no se reconoce el intent
             return handlerInput.responseBuilder
+            .withShouldEndSession(false) // Mantiene la sesión abierta
                 .speak('No entendí tu solicitud. Intenta nuevamente.')
                 .reprompt('¿Podrías decirme en qué puedo ayudarte?')
-                .withShouldEndSession("false") // Mantiene la sesión abierta
+        
                 .getResponse();
         }
 
@@ -86,9 +90,10 @@ const GeneralHandler = {
             if (reason === 'EXCEEDED_MAX_REPROMPTS') {
                 console.log('🔄 Reiniciando la sesión por falta de respuesta del usuario');
                 return handlerInput.responseBuilder
+                .withShouldEndSession(false) // Mantiene la sesión abierta
                     .speak('Parece que no me respondiste. ¿En qué puedo ayudarte ahora?')
                     .reprompt('¿En qué puedo ayudarte?')
-                    .withShouldEndSession("false") 
+                  
                     .getResponse();
             }
 
@@ -97,8 +102,9 @@ const GeneralHandler = {
 
         // Respuesta predeterminada si no se reconoce la solicitud
         return handlerInput.responseBuilder
+        .withShouldEndSession(false) // Mantiene la sesión abierta
             .speak('No se pudo manejar tu solicitud. Intenta nuevamente.')
-            .withShouldEndSession("true") // Cierra la sesión
+          
             .getResponse();
     }
 };
@@ -114,9 +120,10 @@ const ErrorHandler = {
     handle(handlerInput, error) {
         console.error('❌ Error:', error);
         return handlerInput.responseBuilder
+        .withShouldEndSession(true) // Mantiene la sesión abierta
             .speak('Hubo un error inesperado. Inténtalo de nuevo.')
             .reprompt('¿En qué puedo ayudarte?')
-            .withShouldEndSession(false) // Mantiene la sesión abierta
+          
             .getResponse();
     }
 };
