@@ -23,39 +23,34 @@ const openai = new OpenAI({
 });
 
 // ===============================
-// 🔥 Manejador principal para todas las solicitudes
+// 🔥 Handlers de la Skill
 // ===============================
 
 const ChatHandler = {
     canHandle(handlerInput) {
-        return true; // Este handler se ejecuta para cualquier tipo de solicitud
+        return true; // Siempre acepta todas las solicitudes
     },
     async handle(handlerInput) {
+        const requestType = handlerInput.requestEnvelope.request.type || 'No especificado';
+        const intentName = handlerInput.requestEnvelope.request.intent?.name || 'No especificado';
+        console.log(`🔍 Tipo de solicitud: ${requestType}`);
+        console.log(`🎯 Intent recibido: ${intentName}`);
+
+        // Verifica si la solicitud es de tipo SessionEndedRequest
+        if (requestType === 'SessionEndedRequest') {
+            const reason = handlerInput.requestEnvelope.request.reason || 'Desconocido';
+            console.log(`⚠️ La sesión ha finalizado. Razón: ${reason}`);
+            return handlerInput.responseBuilder.getResponse();
+        }
+
+        const userQuery = handlerInput.requestEnvelope.request.intent?.slots?.query?.value || 'No se recibió una consulta.';
+        console.log(`📨 Valor del slot "query": ${userQuery}`);
+
         try {
-            // 🔍 Información general de la solicitud
-            const requestType = handlerInput.requestEnvelope.request.type;
-            const requestId = handlerInput.requestEnvelope.request.requestId;
-            const intentName = handlerInput.requestEnvelope.request?.intent?.name;
-            const slots = handlerInput.requestEnvelope.request?.intent?.slots || {};
-
-            console.log(`\n🔍 Nueva Solicitud Recibida`);
-            console.log(`🔍 Tipo de solicitud: ${requestType}`);
-            console.log(`🆔 ID de la solicitud: ${requestId}`);
-            console.log(`🎯 Intent recibido: ${intentName || 'No especificado'}`);
-            console.log(`📦 Cuerpo completo de la solicitud: \n${JSON.stringify(handlerInput.requestEnvelope, null, 2)}`);
-
-            let userQuery = 'Preséntate como asistente virtual y explica en qué puedes ayudar.'; // Consulta por defecto
-
-            if (requestType === 'IntentRequest' && intentName) {
-                // Intenta obtener la consulta del slot "query" si existe
-                userQuery = slots?.query?.value || 'No se recibió una consulta específica del usuario.';
-                console.log(`📨 Valor del slot "query": ${userQuery}`);
-            }
-
             console.log('📡 Enviando petición a OpenAI...');
 
             const prompt = `Responde siempre en texto plano sin usar etiquetas de audio ni indicaciones de solo audio. Responde de forma clara. La consulta es: "${userQuery}"`;
-
+            
             const response = await openai.chat.completions.create({
                 model: 'gpt-4o-mini',
                 messages: [{ role: 'user', content: prompt }],
@@ -64,19 +59,18 @@ const ChatHandler = {
 
             let chatGptResponse = response?.choices?.[0]?.message?.content || 'No se recibió una respuesta válida de OpenAI';
             chatGptResponse = cleanResponse(chatGptResponse);
-
+            
             console.log(`💬 Respuesta de ChatGPT: "${chatGptResponse}"`);
 
             return handlerInput.responseBuilder
                 .speak(chatGptResponse)
-                .reprompt('¿En qué más puedo ayudarte?')
+                .reprompt('¿En qué más puedo ayudarte?') // Mantiene la sesión activa
                 .getResponse();
         } catch (error) {
-            console.error('❌ Error en la skill:', error.message);
-            console.error('❌ Error completo:', error);
+            console.error('❌ Error al conectar con la API de OpenAI:', error);
             return handlerInput.responseBuilder
-                .speak('Ocurrió un error inesperado. Por favor, intenta nuevamente.')
-                .reprompt('¿En qué puedo ayudarte?')
+                .speak('Hubo un error al obtener la respuesta de ChatGPT. Por favor, inténtalo de nuevo más tarde.')
+                .reprompt('¿Puedo ayudarte con algo más?') // Mantiene la sesión activa
                 .getResponse();
         }
     }
@@ -87,11 +81,10 @@ const ErrorHandler = {
         return true;
     },
     handle(handlerInput, error) {
-        console.error('❌ Error global capturado:', error.message);
-        console.error('❌ Error completo:', error);
+        console.error('❌ Error en la skill:', error.message);
         return handlerInput.responseBuilder
             .speak('Ocurrió un error inesperado. Por favor, intenta nuevamente.')
-            .reprompt('¿En qué más puedo ayudarte?')
+            .reprompt('¿En qué puedo ayudarte?') // Mantiene la sesión activa
             .getResponse();
     }
 };
@@ -107,7 +100,6 @@ function cleanResponse(response) {
     }
 
     response = response.replace(/<audio[^>]*>(.*?)<\/audio>/g, ''); // Remover <audio>...</audio>
-    response = response.replace(/<speak[^>]*>(.*?)<\/speak>/g, ''); // Remover <speak>...</speak>
     response = response.replace(/<[^>]*>/g, ''); // Remover cualquier etiqueta HTML
     response = response.trim(); // Quitar espacios extra
     return response;
@@ -118,14 +110,37 @@ function cleanResponse(response) {
 // ===============================
 
 const skill = SkillBuilders.custom()
-    .addRequestHandlers(ChatHandler) // Solo un manejador para todo
+    .addRequestHandlers(
+        ChatHandler // Solo 1 handler que maneja todas las solicitudes
+    )
     .addErrorHandlers(ErrorHandler)
     .create();
 
-const adapter = new ExpressAdapter(skill, true, true);
+// Interceptar todas las solicitudes para ver el cuerpo completo de la solicitud antes de procesarla
+app.post('/alexa', (req, res, next) => {
+    let body = '';
+    req.on('data', (chunk) => {
+        body += chunk.toString();
+    });
+    req.on('end', () => {
+        console.log('📦 Cuerpo completo de la solicitud (sin procesar):', body);
+        next();
+    });
+}, (req, res, next) => {
+    console.log(`📥 Nueva solicitud entrante a: ${req.path}`);
+    next();
+}, adapter.getRequestHandlers());
 
-app.post('/alexa', adapter.getRequestHandlers());
-
+// Capturar errores de inicialización del servidor
 app.listen(port, () => {
     console.log(`🌐 Server is running on port ${port}`);
+}).on('error', (err) => {
+    console.error('❌ Error al iniciar el servidor:', err);
 });
+
+// ===============================
+// 🔥 Express Adapter para la Skill
+// ===============================
+
+const adapter = new ExpressAdapter(skill, false, false); // Desactiva la verificación de firma y timestamps para pruebas
+
