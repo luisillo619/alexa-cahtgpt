@@ -11,7 +11,6 @@ const port = process.env.PORT || 3000;
 
 const openaiApiKey = process.env.OPENAI_API_KEY.trim();
 const openai = new OpenAI({ apiKey: openaiApiKey });
-
 const GeneralHandler = {
     canHandle(handlerInput) {
         return ['LaunchRequest', 'IntentRequest', 'SessionEndedRequest'].includes(handlerInput.requestEnvelope.request.type);
@@ -24,7 +23,7 @@ const GeneralHandler = {
             return handlerInput.responseBuilder
                 .speak('¡Hola! Estoy aquí para ayudarte. ¿En qué puedo asistirte hoy?')
                 .reprompt('Por favor, dime en qué puedo ayudarte.')
-                .withShouldEndSession(false) 
+                .withShouldEndSession(false) // No termina la sesión
                 .getResponse();
         }
 
@@ -42,13 +41,13 @@ const GeneralHandler = {
                     return handlerInput.responseBuilder
                         .speak(chatGptResponse)
                         .reprompt('¿En qué más puedo ayudarte?')
-                        .withShouldEndSession(false) 
+                        .withShouldEndSession(false) // No termina la sesión
                         .getResponse();
                 } catch (error) {
                     return handlerInput.responseBuilder
                         .speak('Hubo un error con ChatGPT. Intenta nuevamente.')
                         .reprompt('¿En qué puedo ayudarte?')
-                        .withShouldEndSession(false) 
+                        .withShouldEndSession(false) // No termina la sesión
                         .getResponse();
                 }
             }
@@ -57,10 +56,11 @@ const GeneralHandler = {
         return handlerInput.responseBuilder
             .speak('No entendí tu solicitud. Intenta nuevamente.')
             .reprompt('¿Podrías decirme en qué puedo ayudarte?')
-            .withShouldEndSession(false) 
+            .withShouldEndSession(false) // No termina la sesión
             .getResponse();
     }
 };
+
 
 const ErrorHandler = {
     canHandle() {
