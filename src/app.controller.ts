@@ -5,7 +5,7 @@ import { Response } from 'ask-sdk-model';
 import { Request as ExpressRequest, Response as ExpressResponse } from 'express';
 import { AppService } from './app.service';
 
-@Controller()
+@Controller("alexa")
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
