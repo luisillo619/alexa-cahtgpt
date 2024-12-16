@@ -28,7 +28,7 @@ const GeneralHandler = {
             return handlerInput.responseBuilder
                 .speak('¡Hola! Estoy aquí para ayudarte. ¿En qué puedo asistirte hoy?')
                 .reprompt('Por favor, dime en qué puedo ayudarte.')
-                .withShouldEndSession(undefined) // Mantiene la sesión abierta
+                .withShouldEndSession(null) // Mantiene la sesión abierta
                 .getResponse();
         }
 
@@ -58,14 +58,14 @@ const GeneralHandler = {
                     return handlerInput.responseBuilder
                         .speak(chatGptResponse)
                         .reprompt('¿En qué más puedo ayudarte?')
-                        .withShouldEndSession(undefined) // Mantiene la sesión abierta
+                        .withShouldEndSession(null) // Mantiene la sesión abierta
                         .getResponse();
                 } catch (error) {
                     console.error('❌ Error en OpenAI:', error);
                     return handlerInput.responseBuilder
                         .speak('Hubo un error al conectar con ChatGPT. Inténtalo nuevamente.')
                         .reprompt('¿En qué puedo ayudarte?')
-                        .withShouldEndSession(undefined) // Mantiene la sesión abierta
+                        .withShouldEndSession(null) // Mantiene la sesión abierta
                         .getResponse();
                 }
             }
@@ -74,7 +74,7 @@ const GeneralHandler = {
             return handlerInput.responseBuilder
                 .speak('No entendí tu solicitud. Intenta nuevamente.')
                 .reprompt('¿Podrías decirme en qué puedo ayudarte?')
-                .withShouldEndSession(undefined) // Mantiene la sesión abierta
+                .withShouldEndSession(null) // Mantiene la sesión abierta
                 .getResponse();
         }
 
@@ -88,7 +88,7 @@ const GeneralHandler = {
                 return handlerInput.responseBuilder
                     .speak('Parece que no me respondiste. ¿En qué puedo ayudarte ahora?')
                     .reprompt('¿En qué puedo ayudarte?')
-                    .withShouldEndSession(undefined) 
+                    .withShouldEndSession(null) 
                     .getResponse();
             }
 
