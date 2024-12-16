@@ -25,10 +25,11 @@ const openai = new OpenAI({
 // Handlers de la Skill
 const LaunchRequestHandler = {
     canHandle(handlerInput) {
+        console.debug('LaunchRequestHandler - canHandle check:', handlerInput.requestEnvelope);
         return handlerInput.requestEnvelope.request.type === 'LaunchRequest';
     },
     handle(handlerInput) {
-        console.log('🔄 Lanzando la skill (LaunchRequest)');
+        console.debug('LaunchRequestHandler - Handling LaunchRequest:', handlerInput.requestEnvelope);
         const speakOutput = '¡Hola! Estoy aquí para ayudarte. ¿En qué puedo asistirte hoy?';
         
         return handlerInput.responseBuilder
@@ -38,16 +39,19 @@ const LaunchRequestHandler = {
     }
 };
 
-const IntentRequestHandler = {
+const ChatIntentHandler = {
     canHandle(handlerInput) {
-        return handlerInput.requestEnvelope.request.type === 'IntentRequest';
+        console.debug('ChatIntentHandler - canHandle check:', handlerInput.requestEnvelope);
+        return handlerInput.requestEnvelope.request.type === 'IntentRequest' && 
+               handlerInput.requestEnvelope.request.intent.name === 'chat';
     },
     async handle(handlerInput) {
+        console.debug('ChatIntentHandler - Handling ChatIntent:', handlerInput.requestEnvelope);
         const intent = handlerInput.requestEnvelope.request.intent.name;
         console.log(`Intent reconocido: ${intent}`);
         
         const userQuery = handlerInput.requestEnvelope.request.intent.slots?.query?.value || 'No se recibió una consulta.';
-        console.log(`Valor del slot "query": ${userQuery}`);
+        console.debug(`Valor del slot "query": ${userQuery}`);
 
         try {
             console.log('Enviando petición a OpenAI...');
@@ -56,8 +60,9 @@ const IntentRequestHandler = {
                 messages: [{ role: 'user', content: userQuery }],
                 max_tokens: 100
             });
+            console.debug('Respuesta completa de OpenAI:', response);
             const chatGptResponse = response?.choices?.[0]?.message?.content || 'No se recibió una respuesta válida de OpenAI';
-            console.log(`Respuesta de ChatGPT: "${chatGptResponse}"`);
+            console.debug(`Respuesta de ChatGPT: "${chatGptResponse}"`);
 
             return handlerInput.responseBuilder
                 .speak(chatGptResponse)
@@ -75,10 +80,12 @@ const IntentRequestHandler = {
 
 const FallbackIntentHandler = {
     canHandle(handlerInput) {
+        console.debug('FallbackIntentHandler - canHandle check:', handlerInput.requestEnvelope);
         return handlerInput.requestEnvelope.request.type === 'IntentRequest' &&
                handlerInput.requestEnvelope.request.intent.name === 'AMAZON.FallbackIntent';
     },
     handle(handlerInput) {
+        console.debug('FallbackIntentHandler - Handling FallbackIntent:', handlerInput.requestEnvelope);
         console.log('FallbackIntent: No se entendió la petición del usuario.');
         return handlerInput.responseBuilder
             .speak('Lo siento, no entendí eso. ¿Podrías repetir tu pregunta de otra forma?')
@@ -89,9 +96,11 @@ const FallbackIntentHandler = {
 
 const SessionEndedRequestHandler = {
     canHandle(handlerInput) {
+        console.debug('SessionEndedRequestHandler - canHandle check:', handlerInput.requestEnvelope);
         return handlerInput.requestEnvelope.request.type === 'SessionEndedRequest';
     },
     handle(handlerInput) {
+        console.debug('SessionEndedRequestHandler - Handling SessionEndedRequest:', handlerInput.requestEnvelope);
         console.log('💤 SessionEndedRequest recibido, la sesión ha terminado.');
         return handlerInput.responseBuilder.getResponse();
     }
@@ -102,7 +111,8 @@ const ErrorHandler = {
         return true;
     },
     handle(handlerInput, error) {
-        console.error('❌ Error en la skill:', error.message);
+        console.error('❌ Error en la skill:', error);
+        console.debug('ErrorHandler - Handling error with requestEnvelope:', handlerInput.requestEnvelope);
         return handlerInput.responseBuilder
             .speak('Ocurrió un error inesperado. Por favor, intenta nuevamente.')
             .reprompt('¿En qué puedo ayudarte?')
@@ -114,7 +124,7 @@ const ErrorHandler = {
 const skill = SkillBuilders.custom()
     .addRequestHandlers(
         LaunchRequestHandler,
-        IntentRequestHandler,
+        ChatIntentHandler,
         FallbackIntentHandler,
         SessionEndedRequestHandler
     )
