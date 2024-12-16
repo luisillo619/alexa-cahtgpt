@@ -26,7 +26,7 @@ app.post('/alexa', async (req, res) => {
     try {
         const intent = req.body?.request?.intent?.name || 'Intent no encontrado';
         
-        if (intent === 'AskChatGptIntent') {
+        if (intent === 'chat') {
             const userQuery = req.body?.request?.intent?.slots?.query?.value;
 
             if (!userQuery) {
@@ -44,7 +44,7 @@ app.post('/alexa', async (req, res) => {
             res.json(createAlexaResponse(chatGptResponse));
 
         } else {
-            res.json(createAlexaResponse(`Intent no reconocido: ${intent}`));
+            res.json(createAlexaResponse(`${intent}`));
         }
     } catch (error) {
         console.error('Error general:', error.message);
