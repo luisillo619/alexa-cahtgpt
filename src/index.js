@@ -14,73 +14,49 @@ const openai = new OpenAI({ apiKey: openaiApiKey });
 
 const GeneralHandler = {
     canHandle(handlerInput) {
-        const requestType = handlerInput.requestEnvelope.request.type;
-        return ['LaunchRequest', 'IntentRequest', 'SessionEndedRequest'].includes(requestType);
+        return ['LaunchRequest', 'IntentRequest', 'SessionEndedRequest'].includes(handlerInput.requestEnvelope.request.type);
     },
     async handle(handlerInput) {
         const requestType = handlerInput.requestEnvelope.request.type;
         console.log(`📡 Solicitud recibida de tipo: ${requestType}`);
         
         if (requestType === 'LaunchRequest') {
-            const speakOutput = '¡Hola! Estoy aquí para ayudarte. ¿En qué puedo asistirte hoy?';
             return handlerInput.responseBuilder
-                .speak(speakOutput)
+                .speak('¡Hola! Estoy aquí para ayudarte. ¿En qué puedo asistirte hoy?')
+                .reprompt('Por favor, dime en qué puedo ayudarte.')
                 .withShouldEndSession(false) 
                 .getResponse();
         }
 
         if (requestType === 'IntentRequest') {
             const intentName = handlerInput.requestEnvelope.request.intent.name;
-            console.log(`🎯 Intent detectado: ${intentName}`);
-            
             if (intentName === 'chat') {
-                const userQuery = handlerInput.requestEnvelope.request.intent.slots?.query?.value || 'No se recibió una consulta.';
-                console.debug(`📩 Slot recibido (query): ${userQuery}`);
-
                 try {
-                    console.log('Enviando petición a OpenAI...');
+                    const userQuery = handlerInput.requestEnvelope.request.intent.slots?.query?.value || 'No se recibió una consulta.';
                     const response = await openai.chat.completions.create({
                         model: 'gpt-4o-mini',
                         messages: [{ role: 'user', content: userQuery }],
                         max_tokens: 100
                     });
-
-                    const chatGptResponse = response?.choices?.[0]?.message?.content || 'No se recibió una respuesta válida de OpenAI';
-                    console.debug(`💬 Respuesta de ChatGPT: "${chatGptResponse}"`);
-
+                    const chatGptResponse = response?.choices?.[0]?.message?.content || 'No se recibió respuesta de OpenAI';
                     return handlerInput.responseBuilder
                         .speak(chatGptResponse)
                         .reprompt('¿En qué más puedo ayudarte?')
                         .withShouldEndSession(false) 
                         .getResponse();
                 } catch (error) {
-                    console.error('❌ Error al conectar con la API de OpenAI:', error);
                     return handlerInput.responseBuilder
-                        .speak('Hubo un error al obtener la respuesta de ChatGPT. Por favor, inténtalo de nuevo más tarde.')
+                        .speak('Hubo un error con ChatGPT. Intenta nuevamente.')
+                        .reprompt('¿En qué puedo ayudarte?')
                         .withShouldEndSession(false) 
                         .getResponse();
                 }
             }
-
-            if (intentName === 'AMAZON.FallbackIntent') {
-                return handlerInput.responseBuilder
-                    .speak('Lo siento, no entendí eso. ¿Podrías repetir tu pregunta de otra forma?')
-                    .reprompt('¿Podrías decirme en qué puedo ayudarte?')
-                    .withShouldEndSession(false) 
-                    .getResponse();
-            }
-        }
-
-        if (requestType === 'SessionEndedRequest') {
-            const reason = handlerInput.requestEnvelope.request.reason || 'No reason provided';
-            console.log(`💤 Sesión finalizada. Razón: ${reason}`);
-
-            return handlerInput.responseBuilder.getResponse(); // No cerramos explícitamente la sesión
         }
 
         return handlerInput.responseBuilder
-            .speak('No entendí tu solicitud. Por favor, intenta nuevamente.')
-            .reprompt('¿En qué puedo ayudarte?')
+            .speak('No entendí tu solicitud. Intenta nuevamente.')
+            .reprompt('¿Podrías decirme en qué puedo ayudarte?')
             .withShouldEndSession(false) 
             .getResponse();
     }
