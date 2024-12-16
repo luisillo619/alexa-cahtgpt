@@ -23,60 +23,34 @@ const openai = new OpenAI({
 });
 
 // ===============================
-// 🔥 Handlers de la Skill
+// 🔥 Unificar todos los manejadores en uno solo
 // ===============================
 
-const LaunchRequestHandler = {
+const ChatHandler = {
     canHandle(handlerInput) {
-        return handlerInput.requestEnvelope.request.type === 'LaunchRequest';
+        return true; // Este handler se ejecuta para cualquier tipo de solicitud
     },
     async handle(handlerInput) {
-        console.log('🔄 Lanzando la skill (LaunchRequest)');
-        
-        const userQuery = 'Preséntate como asistente virtual y explica en qué puedes ayudar.';
         try {
-            console.log('📡 Enviando petición a OpenAI para LaunchRequest...');
-            
-            const prompt = `Responde siempre en texto plano sin usar etiquetas de audio ni indicaciones de solo audio. Responde de forma clara. La consulta es: "${userQuery}"`;
-            
-            const response = await openai.chat.completions.create({
-                model: 'gpt-4o-mini',
-                messages: [{ role: 'user', content: prompt }],
-                max_tokens: 150
-            });
+            const requestType = handlerInput.requestEnvelope.request.type;
+            const intentName = handlerInput.requestEnvelope.request?.intent?.name;
+            const slots = handlerInput.requestEnvelope.request?.intent?.slots || {};
 
-            let chatGptResponse = response?.choices?.[0]?.message?.content || 'No se recibió una respuesta válida de OpenAI';
-            chatGptResponse = cleanResponse(chatGptResponse);
-            
-            console.log(`💬 Respuesta de ChatGPT (LaunchRequest): "${chatGptResponse}"`);
+            console.log(`🔍 Tipo de solicitud: ${requestType}`);
+            console.log(`🎯 Intent recibido: ${intentName || 'No especificado'}`);
 
-            return handlerInput.responseBuilder
-                .speak(chatGptResponse)
-                .reprompt('¿En qué más puedo ayudarte?')
-                .getResponse();
-        } catch (error) {
-            console.error('❌ Error al conectar con la API de OpenAI (LaunchRequest):', error);
-            return handlerInput.responseBuilder
-                .speak('Ocurrió un error al iniciar la conversación. Por favor, inténtalo de nuevo más tarde.')
-                .reprompt('¿En qué más puedo ayudarte?')
-                .getResponse();
-        }
-    }
-};
+            let userQuery = 'Preséntate como asistente virtual y explica en qué puedes ayudar.'; // Consulta por defecto
 
-const ChatIntentHandler = {
-    canHandle(handlerInput) {
-        return true
-    },
-    async handle(handlerInput) {
-        const userQuery = handlerInput.requestEnvelope.request.intent.slots?.query?.value || 'No se recibió una consulta.';
-        console.log(`📨 Valor del slot "query": ${userQuery}`);
+            if (requestType === 'IntentRequest' && intentName) {
+                // Intenta obtener la consulta del slot "query" si existe
+                userQuery = slots?.query?.value || 'No se recibió una consulta específica del usuario.';
+                console.log(`📨 Valor del slot "query": ${userQuery}`);
+            }
 
-        try {
             console.log('📡 Enviando petición a OpenAI...');
 
             const prompt = `Responde siempre en texto plano sin usar etiquetas de audio ni indicaciones de solo audio. Responde de forma clara. La consulta es: "${userQuery}"`;
-            
+
             const response = await openai.chat.completions.create({
                 model: 'gpt-4o-mini',
                 messages: [{ role: 'user', content: prompt }],
@@ -85,7 +59,7 @@ const ChatIntentHandler = {
 
             let chatGptResponse = response?.choices?.[0]?.message?.content || 'No se recibió una respuesta válida de OpenAI';
             chatGptResponse = cleanResponse(chatGptResponse);
-            
+
             console.log(`💬 Respuesta de ChatGPT: "${chatGptResponse}"`);
 
             return handlerInput.responseBuilder
@@ -93,22 +67,12 @@ const ChatIntentHandler = {
                 .reprompt('¿En qué más puedo ayudarte?')
                 .getResponse();
         } catch (error) {
-            console.error('❌ Error al conectar con la API de OpenAI:', error);
+            console.error('❌ Error en la skill:', error.message);
             return handlerInput.responseBuilder
-                .speak('Hubo un error al obtener la respuesta de ChatGPT. Por favor, inténtalo de nuevo más tarde.')
-                .reprompt('¿Puedo ayudarte con algo más?')
+                .speak('Ocurrió un error inesperado. Por favor, intenta nuevamente.')
+                .reprompt('¿En qué puedo ayudarte?')
                 .getResponse();
         }
-    }
-};
-
-const SessionEndedRequestHandler = {
-    canHandle(handlerInput) {
-        return handlerInput.requestEnvelope.request.type === 'SessionEndedRequest';
-    },
-    handle(handlerInput) {
-        console.log(`💤 SessionEndedRequest recibido, la sesión ha terminado.`);
-        return handlerInput.responseBuilder.getResponse();
     }
 };
 
@@ -117,10 +81,10 @@ const ErrorHandler = {
         return true;
     },
     handle(handlerInput, error) {
-        console.error('❌ Error en la skill:', error.message);
+        console.error('❌ Error global capturado:', error.message);
         return handlerInput.responseBuilder
             .speak('Ocurrió un error inesperado. Por favor, intenta nuevamente.')
-            .reprompt('¿En qué puedo ayudarte?')
+            .reprompt('¿En qué más puedo ayudarte?')
             .getResponse();
     }
 };
@@ -136,6 +100,7 @@ function cleanResponse(response) {
     }
 
     response = response.replace(/<audio[^>]*>(.*?)<\/audio>/g, ''); // Remover <audio>...</audio>
+    response = response.replace(/<speak[^>]*>(.*?)<\/speak>/g, ''); // Remover <speak>...</speak>
     response = response.replace(/<[^>]*>/g, ''); // Remover cualquier etiqueta HTML
     response = response.trim(); // Quitar espacios extra
     return response;
@@ -146,11 +111,7 @@ function cleanResponse(response) {
 // ===============================
 
 const skill = SkillBuilders.custom()
-    .addRequestHandlers(
-        LaunchRequestHandler,
-        ChatIntentHandler,
-        SessionEndedRequestHandler
-    )
+    .addRequestHandlers(ChatHandler) // Solo un manejador para todo
     .addErrorHandlers(ErrorHandler)
     .create();
 
