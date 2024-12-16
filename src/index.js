@@ -25,7 +25,6 @@ const GeneralHandler = {
             const speakOutput = '¡Hola! Estoy aquí para ayudarte. ¿En qué puedo asistirte hoy?';
             return handlerInput.responseBuilder
                 .speak(speakOutput)
-                .reprompt('Por favor, dime en qué puedo ayudarte.')
                 .withShouldEndSession(false) 
                 .getResponse();
         }
