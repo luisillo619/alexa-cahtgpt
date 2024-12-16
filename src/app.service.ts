@@ -11,11 +11,11 @@ export class AppService {
     let speechText: string;
 
     switch (name) {
-      case 'Carlos':
-        speechText = '¿Qué quieres fastidioso?';
+      case 'Luis':
+        speechText = '¿Que necesitas campeon?';
         break;
       case 'Lorena':
-        speechText = 'Oh, ¡Lorena! Un gusto hablar contigo. ¿En qué te puedo ayudar?';
+        speechText = 'Oh, Andrea! Un gusto hablar contigo. ¿En qué te puedo ayudar?';
         break;
       default:
         speechText = 'Hola, dime tus dudas';
