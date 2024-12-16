@@ -107,7 +107,7 @@ const SessionEndedRequestHandler = {
     },
     handle(handlerInput) {
         const reason = handlerInput.requestEnvelope.request.reason || 'No se proporcionó una razón';
-        console.log('💤 La sesión terminó. Razón:', reason);
+        console.log('💤 La sesión terminó. Razón:', handlerInput);
         return handlerInput.responseBuilder.getResponse();
     }
 };
