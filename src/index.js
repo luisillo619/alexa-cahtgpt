@@ -66,7 +66,7 @@ const LaunchRequestHandler = {
 
 const ChatIntentHandler = {
     canHandle(handlerInput) {
-        return handlerInput.requestEnvelope.request.type === 'IntentRequest';
+        return true
     },
     async handle(handlerInput) {
         const userQuery = handlerInput.requestEnvelope.request.intent.slots?.query?.value || 'No se recibió una consulta.';
