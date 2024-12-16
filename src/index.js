@@ -14,7 +14,7 @@ const openai = new OpenAI({ apiKey: openaiApiKey });
 
 /**
  * 🔥 Manejador General de la Skill
- * Gestiona LaunchRequest, IntentRequest y delega la recopilación de slots.
+ * Gestiona LaunchRequest, IntentRequest y delega la recolección de slots.
  */
 const GeneralHandler = {
     canHandle(handlerInput) {
@@ -27,10 +27,9 @@ const GeneralHandler = {
         if (requestType === 'LaunchRequest') {
             console.log('🎉 Lanzando la skill');
             return handlerInput.responseBuilder
-                .addDelegateDirective() // 🔥 Delega la recolección de la conversación
-                .withShouldEndSession(false) // 🔥 Evita que la sesión se cierre
                 .speak('¡Hola! Estoy aquí para ayudarte. ¿En qué puedo asistirte hoy?')
                 .reprompt('Por favor, dime en qué puedo ayudarte.')
+                .withShouldEndSession(false) // 🔥 Mantiene la sesión abierta (uso booleano correcto)
                 .getResponse();
         }
 
@@ -41,18 +40,9 @@ const GeneralHandler = {
             console.log(`📡 Intent detectado: ${intentName}`);
             console.log('📋 Slots:', slots);
             
-            // 🔥 Delega la recolección automática de slots
-            if (Object.values(slots).some(slot => !slot.value)) {
-                console.log('⏳ Faltan slots. Usando addDelegateDirective para delegar la conversación.');
-                return handlerInput.responseBuilder
-                    .addDelegateDirective() // 🔥 Delega la recolección de slots
-                    .withShouldEndSession(false) // 🔥 Evita que la sesión se cierre
-                    .getResponse();
-            }
-
             if (intentName === 'chat') {
                 try {
-                    const userQuery = slots.query.value || 'No se recibió una consulta.';
+                    const userQuery = slots.query?.value || 'No se recibió una consulta.';
                     console.log('🗣️ Usuario dijo:', userQuery);
 
                     const response = await openai.chat.completions.create({
@@ -67,16 +57,14 @@ const GeneralHandler = {
                     return handlerInput.responseBuilder
                         .speak(chatGptResponse)
                         .reprompt('¿En qué más puedo ayudarte?')
-                        .addDelegateDirective() // 🔥 Delega la recolección de la conversación
-                        .withShouldEndSession(false) // 🔥 Evita que la sesión se cierre
+                        .withShouldEndSession(false) // 🔥 Mantiene la sesión abierta
                         .getResponse();
                 } catch (error) {
                     console.error('❌ Error en OpenAI:', error);
                     return handlerInput.responseBuilder
                         .speak('Hubo un error al conectar con ChatGPT. Inténtalo nuevamente.')
                         .reprompt('¿En qué puedo ayudarte?')
-                        .addDelegateDirective() // 🔥 Delega la recolección de la conversación
-                        .withShouldEndSession(false) // 🔥 Evita que la sesión se cierre
+                        .withShouldEndSession(false) // 🔥 Mantiene la sesión abierta
                         .getResponse();
                 }
             }
@@ -85,8 +73,7 @@ const GeneralHandler = {
             return handlerInput.responseBuilder
                 .speak('No entendí tu solicitud. Intenta nuevamente.')
                 .reprompt('¿Podrías decirme en qué puedo ayudarte?')
-                .addDelegateDirective() // 🔥 Delega la recolección de la conversación
-                .withShouldEndSession(false) // 🔥 Evita que la sesión se cierre
+                .withShouldEndSession(false) // 🔥 Mantiene la sesión abierta
                 .getResponse();
         }
     }
@@ -101,12 +88,11 @@ const ErrorHandler = {
         return true; 
     },
     handle(handlerInput, error) {
-        console.error('❌ Error:', error);
+        console.error('❌ Error inesperado:', error);
         return handlerInput.responseBuilder
             .speak('Hubo un error inesperado. Inténtalo de nuevo.')
             .reprompt('¿En qué puedo ayudarte?')
-            .addDelegateDirective() // 🔥 Delega la recolección de la conversación
-            .withShouldEndSession(false) // 🔥 Evita que la sesión se cierre
+            .withShouldEndSession(false) // 🔥 Mantiene la sesión abierta
             .getResponse();
     }
 };
